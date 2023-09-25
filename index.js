@@ -6,75 +6,56 @@ const token = '6333179341:AAGDuXJXNCdCs-Teol4IUutsc6KGRV9C1Fk';
 const webAppUrl = 'https://jovial-crumble-d429d8.netlify.app'
 
 const bot = new TelegramBot(token, { polling: true });
-const app = express()
+const app = express();
 
-app.use(express.json())
-app.use(cors())
+app.use(express.json());
+app.use(cors());
 
-bot.on('message', async (msg) => {
+bot.onText(/\/start/, async (msg) => {
     const chatId = msg.chat.id;
-    const text = msg.text;
 
-    if (text === '/start') {
-        await bot.sendMessage(chatId, 'ниже появится кнопка заполни форму', {
-            reply_markup: {
-                keyboard: [
-                    [{ text: 'Заполнить форму', web_app: { url: webAppUrl + '/form' } }]
-                ]
-            }
-        })
+    // Создаем клавиатуру для кнопки "Баланс"
+    const keyboard = {
+        inline_keyboard: [
+            [{ text: 'Баланс', callback_data: 'balance' }],
+            [{ text: 'Магазин', web_app: { url: webAppUrl } }],
+        ],
+    };
 
-        await bot.sendMessage(chatId, 'наш магазин', {
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: 'Сделать заказ', web_app: { url: webAppUrl } }]
-                ]
-            }
-        })
-    }
+    // Отправляем сообщение с клавиатурой
+    await bot.sendMessage(chatId, 'Приветствую тебя, друг! Я рада приветствовать тебя в нашем телеграм боте, который поможет тебе получить баллы за приглашение друзей в наш канал. Каждое новое приглашение позволит тебе заработать больше баллов, которые впоследствии можно будет обменять на скины ксго и товары нашего магазина. Не упусти свой шанс получить дополнительные бонусы и приглашай своих друзей в наш канал уже сегодня!', {
+        reply_markup: keyboard,
+    });
+});
 
-    if (msg?.web_app_data?.data) {
-        try {
-            const data = JSON.parse(msg?.web_app_data?.data)
-            console.log(data)
-            await bot.sendMessage(chatId, 'Спасибо за покупку!')
-            await bot.sendMessage(chatId, 'Ваша страна: ' + data?.country)
-            await bot.sendMessage(chatId, 'Ваша улица: ' + data?.street)
+bot.on('callback_query', async (query) => {
+    const chatId = query.message.chat.id;
+    const data = query.data;
 
-            setTimeout(async () => {
-                await bot.sendMessage(chatId, 'В ближайшее время с вами свяжется наш менеджер')
-            }, 3000)
-        } catch (e) {
-            console.log(e)
-        }
-    } else {
+    if (data === 'balance') {
+        // Здесь вы должны получить баланс пользователя из вашей базы данных или другого источника данных
+        const userBalance = 0; // Здесь предполагается, что баланс пользователя равен 100 (замените на реальное значение)
 
+        // Отправляем баланс пользователю немедленно
+        await bot.sendMessage(chatId, `Ваш текущий баланс: ${userBalance} баллов`);
     }
 });
 
 app.post('/web-data', async (req, res) => {
-    const { queryId, products, totalPrice } = req.body
+    const { queryId, products, totalPrice } = req.body;
     try {
         await bot.answerWebAppQuery(queryId, {
             type: 'article',
             id: queryId,
             title: 'Успешная покупка',
-            input_message_content: { message_text: 'Поздравляем с покупкой, вы приобрели товар на сумму ' + totalPrice }
-        })
-        return res.status(200).json({})
-
+            input_message_content: { message_text: `Поздравляем с покупкой, вы приобрели товар на сумму ${totalPrice}` },
+        });
+        return res.status(200).json({});
     } catch (e) {
-        await bot.answerWebAppQuery(queryId, {
-            type: 'article',
-            id: queryId,
-            title: 'Не удалось приобрести товар',
-            input_message_content: { message_text: 'Не удалось приобрести товар' }
-        })
-        return res.status(500).json({})
-
+        return res.status(500).json({});
     }
-})
+});
 
 const PORT = 8000;
 
-app.listen(PORT, () => console.log('server started on PORT ' + PORT))
+app.listen(PORT, () => console.log('server started on PORT ' + PORT));
